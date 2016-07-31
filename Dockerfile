@@ -1,5 +1,4 @@
 FROM debian:stretch
-MAINTAINER Sylvain Desbureaux <sylvain@desbureaux.fr>
 
 ENV DOMOTICZ_VERSION 3.4834
 
@@ -22,40 +21,27 @@ RUN apt-get update \
 		linux-headers-amd64 \
 	&& rm -rf /var/lib/apt/lists/*
 
-## OpenZwave installation
-# grep git version of openzwave
-RUN git clone --depth 2 https://github.com/OpenZWave/open-zwave.git /src/open-zwave
-
-# untar the files
-WORKDIR /src/open-zwave
+# OpenZwave installation
+# "install" in order to be found by domoticz
+RUN git clone --depth 1 https://github.com/OpenZWave/open-zwave.git /src/open-zwave \
+	&& ln -s /src/open-zwave /src/open-zwave-read-only
 
 # compile
+WORKDIR /src/open-zwave
 RUN make
-
-# "install" in order to be found by domoticz
-RUN ln -s /src/open-zwave /src/open-zwave-read-only
 
 ## Domoticz installation
 
-# Grab source of release
+# Grab source of release and use Config from OpenZWave
 RUN mkdir -p /src/domoticz \
-	&& wget -qO- https://github.com/domoticz/domoticz/archive/$DOMOTICZ_VERSION.tar.gz | tar xz --strip-components=1 -C /src/domoticz
+	&& wget -qO- https://github.com/domoticz/domoticz/archive/$DOMOTICZ_VERSION.tar.gz | tar xz --strip-components=1 -C /src/domoticz \
+	&& rm -r /src/domoticz/Config && ln -s /src/open-zwave/config /src/domoticz/Config
 
 WORKDIR /src/domoticz
 
-# prepare makefile
-RUN cmake -DCMAKE_BUILD_TYPE=Release .
-
-# compile
-RUN make
-
-# update to latest config from open-zwave
-RUN rm -r /src/domoticz/Config && ln -s /src/open-zwave/config /src/domoticz/Config
-
-# remove git and tmp dirs
-#RUN apt-get remove -y git cmake linux-headers-amd64 build-essential libssl-dev libboost-dev libboost-thread-dev libboost-system-dev libsqlite3-dev libcurl4-openssl-dev #libusb-dev zlib1g-dev libudev-dev && \
-#   apt-get autoremove -y && \
-#   apt-get clean
+# prepare makefile && compile
+RUN cmake -DCMAKE_BUILD_TYPE=Release . \
+	&& make
 
 VOLUME /config
 
