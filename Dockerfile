@@ -1,6 +1,6 @@
 FROM debian:stretch
 
-ENV DOMOTICZ_VERSION 3.4834
+ENV DOMOTICZ_VERSION 3.5498
 
 # install packages
 RUN apt-get update \
